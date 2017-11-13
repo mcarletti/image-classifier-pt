@@ -10,17 +10,16 @@ import numpy as np
 
 
 seed = 23092017
+torch.manual_seed(seed)
+np.random.seed(seed)
 
 HAS_CUDA = True
 if not torch.cuda.is_available():
     print('CUDA not available, using CPU')
     HAS_CUDA = False
-    torch.manual_seed_all(seed)
 else:
     torch.cuda.manual_seed_all(seed)
     gpu_id = 0
-
-np.random.seed(seed)
 
 mu = (0.485, 0.456, 0.406)
 sd = (0.229, 0.224, 0.225)
