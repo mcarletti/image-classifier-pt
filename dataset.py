@@ -36,7 +36,7 @@ class DATASET(torch.utils.data.Dataset):
             index (int): Index.
 
         Returns:
-            tuple: (image, target).
+            tuple: (image, target, label).
         '''
         image = self.images[index]
         target = self.values[index]
@@ -45,7 +45,7 @@ class DATASET(torch.utils.data.Dataset):
         if self.transform is not None:
             image = self.transform(image)
 
-        return image, target, self.labels[target]
+        return image, target, str(self.labels[target])
 
     def __len__(self):
         return len(self.images)
