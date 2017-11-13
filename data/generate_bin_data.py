@@ -30,8 +30,8 @@ def load_depth_images(folder, verbose=True):
     nb_classes = len(class_paths)
 
     nb_samples = len(list_files(folder, ext='', rec=True)) 
-    cols = 224
-    rows = 224
+    cols = 100
+    rows = 100
     target_shape = (cols, rows)  # PIL format
 
     data = {}
