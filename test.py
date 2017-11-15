@@ -23,12 +23,11 @@ test_set = dataset.DATASET(train=False, transform=transf)
 class_names = test_set.labels
 nb_classes = class_names.shape[0]
 
-batch_size = 48
+batch_size = 16
 test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, shuffle=True, num_workers=0)
 
 
 print('Creating network')
-net = network.Network((3, 100, 100), nb_classes)
 net = torch.load('trained_model.pth')
 if HAS_CUDA:
     net.cuda()

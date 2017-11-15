@@ -30,7 +30,7 @@ train_set = dataset.DATASET(train=True, transform=transf)
 class_names = train_set.labels
 nb_classes = class_names.shape[0]
 
-batch_size = 24
+batch_size = 8
 train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=0)
 
 use_data_augmentation_hflip = True
@@ -61,6 +61,7 @@ nb_batches = len(train_loader)
 for epoch in range(nb_epochs):
     for batch_id, data in enumerate(train_loader):
         images, targets, _ = data
+        targets = targets.type(torch.LongTensor)
 
         if use_data_augmentation_hflip:
             flipped_images = images.numpy()[:,:,:,::-1].copy()
@@ -68,7 +69,7 @@ for epoch in range(nb_epochs):
             targets = torch.cat((targets, targets))
 
         if HAS_CUDA:
-            images, targets = images.cuda(gpu_id), targets.type(torch.LongTensor).cuda(gpu_id)
+            images, targets = images.cuda(gpu_id), targets.cuda(gpu_id)
 
         images, targets = torch.autograd.Variable(images), torch.autograd.Variable(targets)
 
