@@ -11,8 +11,8 @@ python3 generate_bin_data.py
 ### Train and Test custom model
 Run the `train.py` script from the root folder to train the model and `test.py` to test it
 ```python
-python3 train.py  # train [75% acc]
-python3 test.py   # test  [66% acc]
+python3 train.py  # train [80% acc]
+python3 test.py   # test  [78% acc]
 ```
 
 ### Test a VGG16 classifier
