@@ -7,7 +7,18 @@ class Network(torch.nn.Module):
     def __init__(self, input_shape, nb_classes):
         super(Network, self).__init__()
 
-        self.features = torchvision.models.vgg16_bn(pretrained=True).features
+        self.features = torch.nn.Sequential(
+            torch.nn.Conv2d(input_shape[0], 32, 5),
+            torch.nn.BatchNorm2d(32),
+            torch.nn.ReLU(), torch.nn.MaxPool2d(2,2),
+            torch.nn.Conv2d(32, 64, 3),
+            torch.nn.BatchNorm2d(64),
+            torch.nn.ReLU(), torch.nn.MaxPool2d(2,2),
+            torch.nn.Conv2d(64, 48, 3),
+            torch.nn.BatchNorm2d(48),
+            torch.nn.ReLU(), torch.nn.MaxPool2d(2,2))
+
+        self.features.apply(self._xavier_init)
 
         x = self.features(torch.autograd.Variable(torch.zeros(1, *input_shape)))
         self.nfts = x.numel()
@@ -28,7 +39,7 @@ class Network(torch.nn.Module):
         self._normal_init(self.fc3, 0.0, 0.001)
 
     def forward(self, x):
-        x = F.relu(self.features(x))
+        x = self.features(x)
         x = x.view(-1, self.nfts)
         x = F.relu(self.fc1_bn(self.fc1(x)))
         x = F.relu(self.fc2_bn(self.fc2(x)))
@@ -36,10 +47,18 @@ class Network(torch.nn.Module):
         return x
 
     def _normal_init(self, module, mu, std):
+        class_name =  module.__class__.__name__
+        for module_name in ['ReLU', 'MaxPool', 'Sequential']:
+            if class_name.find(module_name) != -1:
+                return
         module.weight.data.normal_(mu, std)
         module.bias.data.fill_(mu)
     
     def _xavier_init(self, module):
+        class_name =  module.__class__.__name__
+        for module_name in ['ReLU', 'MaxPool', 'Sequential']:
+            if class_name.find(module_name) != -1:
+                return
         import math
         if len(module.weight.data.shape) > 1:
             N_in = module.weight.data.size()[1]
