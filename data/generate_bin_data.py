@@ -75,9 +75,10 @@ def load_depth_images(folder, verbose=True):
     return images, values, labels
 
 
-def save_dataset(filename, data):
+def save_dataset(dest_folder, filename, data):
 
-    print('Saving', filename)
+    fpath = dest_folder + filename
+    print('Saving', fpath)
 
     variables = {}
     variables['images'] = data[0]
@@ -85,7 +86,11 @@ def save_dataset(filename, data):
     variables['labels'] = data[2]
 
     import scipy.io as sio
-    sio.savemat(filename, variables, do_compression=True)
+    sio.savemat(fpath, variables, do_compression=True)
+
+    with open(dest_folder + '/class_labels.txt', 'w') as fp:
+        for label in data[2]:
+            fp.write("%s\n" % label)
 
 
 #%%
@@ -102,4 +107,4 @@ if __name__ == '__main__':
     for folder in folders:
         print('Loading', folder, 'set')
         data = load_depth_images('raw_data/' + folder, verbose=False)
-        save_dataset(dest_folder + folder + '.mat', data)
+        save_dataset(dest_folder, folder + '.mat', data)
