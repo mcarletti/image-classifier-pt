@@ -37,7 +37,7 @@ use_data_augmentation_hflip = True
 
 
 print('Creating network')
-net = network.Network((3, 100, 100), nb_classes)
+net = network.MobileNet((3, 100, 100), nb_classes)
 net.train()
 if HAS_CUDA:
     net.cuda(gpu_id)
