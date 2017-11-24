@@ -6,6 +6,7 @@ from torchvision import transforms
 from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
+import sys
 
 # check cuda support
 HAS_CUDA = True
@@ -14,7 +15,7 @@ if not torch.cuda.is_available():
     HAS_CUDA = False
 
 print('Load image')
-image = np.asarray(Image.open('data/sample.jpg'))
+image = np.asarray(Image.open(sys.argv[1]).resize((224,224)))
 assert(image.shape == (224, 224, 3))
 
 plt.imshow(image)
@@ -37,10 +38,10 @@ if HAS_CUDA:
     image = image.cuda()
 
 print('Computing prediction')
-pred = model(image)
-pred = pred.data.cpu().numpy()
+pred = torch.nn.Softmax()(model(image))
+pred = pred.data.cpu().numpy()[0]
 
 # show results
 class_id = np.argmax(pred)
 class_labels = np.loadtxt(open('data/ilsvrc_2012_labels.txt'), dtype=object, delimiter='\n')
-print(class_labels[class_id])
+print(class_labels[class_id], pred[class_id])
