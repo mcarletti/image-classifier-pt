@@ -1,85 +1,189 @@
-from __future__ import print_function
-import torch
-from torchvision import transforms
-
-import dataset
-import network
-
-import matplotlib.pyplot as plt
-import numpy as np
-
-from PIL import Image
-import os
+# -*- coding: utf-8 -*-
 
 import argparse
 
+import torch
+from torch.autograd import Variable
+import torchvision.transforms as transforms
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--input_image', type=str, default=None)
-args = parser.parse_args()
+import matplotlib.pyplot as plt
+import numpy as np
+import os
 
-HAS_CUDA = True
-if not torch.cuda.is_available():
-    print('CUDA not available, using CPU')
-    HAS_CUDA = False
+from utils import *
+from metrics import *
+from dataset import DATASET
 
-mu = (0.485, 0.456, 0.406)
-sd = (0.229, 0.224, 0.225)
-transf = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mu, sd)])
+# Results computation and visualization -------
 
-print('Creating network')
-net = torch.load('trained_model.pth')
-net.eval()
-if HAS_CUDA:
-    net.cuda()
+def test_image(model, image, use_cuda=False, gpu_id=0):
+    '''Test one single image, which must be a PyTorch FloatTensor (CxHxW).
+    '''
+    model.eval()
 
-if args.input_image is not None:
+    if use_cuda:
+        image = image.cuda(gpu_id)
 
-    assert os.path.exists(args.input_image)
+    pred = model(Variable(image.unsqueeze(0)))
+    pred = torch_to_numpy(pred).squeeze()
 
-    print('Load image')
-    image = np.asarray(Image.open(args.input_image).resize((100, 100)))
-    assert(image.shape == (100, 100, 3))
+    return pred
 
-    plt.imshow(image)
-    plt.show()
+def test(model, dataloader, loss_fun=None, score_fun=None, use_cuda=False, gpu_id=0, hflip=False):
+    '''Test the dataloader, one image at time. If \'loss_fun\' and/or \'score_fun\' are specified,
+    also loss and score values are computed. If \'hflip\' is True, the prediction value of the
+    i-th image is computed as the mean of the original image and its horizontal flipped
+    version.
+    '''
+    
+    model.eval()
+    nb_samples = len(dataloader.dataset)
+    predictions = []
+    targets = []
 
-    image = transf(image).unsqueeze(0)
-    image = torch.autograd.Variable(image)
-    if HAS_CUDA:
-        image = image.cuda()
+    for i in range(nb_samples):
+        image, target = dataloader.dataset[i]
+        image.unsqueeze_(0)
 
-    print('Computing prediction')
-    pred = net(image)
-    pred = pred.data.cpu().numpy()
+        if hflip:
+            flipped_image = image.numpy()[:,:,:,::-1].copy()
+            image = torch.cat((image, torch.from_numpy(flipped_image)))
 
-    class_id = np.argmax(pred)
-    class_labels = np.loadtxt(open('data/bin_data/class_labels.txt'), dtype=object, delimiter='\n')
-    print(class_labels[class_id])
+        if use_cuda:
+            image = image.cuda(gpu_id)
 
-else:
+        pred = model(Variable(image))
+        pred = np.mean(torch_to_numpy(pred), axis=0).squeeze()
+        
+        predictions.append(pred)
+        targets.append(target)
 
-    print('Loading dataset')
-    test_set = dataset.DATASET(train=False, transform=transf)
-    class_names = test_set.labels
-    nb_classes = class_names.shape[0]
+    predictions = np.asarray(predictions)
+    targets = np.asarray(targets)
 
-    batch_size = 16
-    test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, shuffle=True, num_workers=0)
+    loss, score = None, None
 
-    print('Computing accuracy on testing set')
-    correct = 0
-    total = 0
-    for data in test_loader:
-        images, targets, _ = data
+    if loss_fun is not None:
+        p = numpy_to_torch(predictions, use_cuda)
+        t = numpy_to_torch(targets, False)
+        if isinstance(t.data, torch.IntTensor):
+            t = t.type(torch.LongTensor)
+        if use_cuda:
+            t = t.cuda()
+        loss = loss_fun(p, t)
+        loss = torch_to_numpy(loss)[0]
 
-        if HAS_CUDA:
-            images, targets = images.cuda(), targets.type(torch.LongTensor).cuda()
+    if score_fun is not None:
+        score = score_fun(predictions, targets)
 
-        predictions = net(torch.autograd.Variable(images, requires_grad=False))
-        _, predicted = torch.max(predictions.data, 1)
-        total += batch_size
-        correct += (predicted == targets).sum()
+    return predictions, targets, loss, score
 
-    print('Accuracy of the network on the testing images: %d %%' % (100 * correct / total))
+def show_outliers(arr, title='Outliers', show_immediately=False):
+    '''Extract and show the outliers in the input vector.
+    '''
+    N = arr.size
+    xx = np.linspace(0, N - 1, N)
+    out_idx = find_outliers(arr)
 
+    plt.figure()
+    plt.plot(xx, arr, color='r', label='data')
+    plt.scatter(out_idx, arr[out_idx], color='b', label='outliers')
+    plt.title(title)
+    plt.grid(True)
+    plt.legend()
+
+    if show_immediately:
+        plt.show()
+
+if __name__ == '__main__':
+
+    seed = 23092017
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
+    #%% Check arguments ------------------------------------------------------------
+
+    # Parse arguments.
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument('--model_dir', type=str, required=True,
+                        help='results folder path')
+    parser.add_argument('--dataset_dir', type=str, required=True,
+                    help='dataset folder containing \'train.mat\' and \'test.mat\'')
+    parser.add_argument('--input_shape', type=int, default=224,
+                        help='input image resolution')
+    parser.add_argument('--batch_size', type=int, default=1,
+                        help='number of samples per batch')
+    parser.add_argument('--gpu_id', type=int, default=None,
+                        help='enable cuda and use the specified gpu')
+    parser.add_argument('--use_cuda', action='store_true',
+                        help='enable cuda; if enabled and \'gpu_id\' is not set, the first available gpu will be used by default')
+    parser.add_argument('--verbose', action='store_true',
+                        help='print additional information')
+
+    args = parser.parse_args()
+
+    assert os.path.isdir(args.model_dir)
+
+    if args.gpu_id is not None:
+        args.use_cuda = True
+    
+    if args.use_cuda:
+        if args.gpu_id is None:
+            args.gpu_id = 0
+
+    if args.verbose:
+        print(args)
+
+    #%% Load model -----------------------------------------------------------------
+
+    mu = (0.485, 0.456, 0.406)
+    sd = (0.229, 0.224, 0.225)
+
+    # Normalize RGB-8 images between -1 and +1.
+    transf = transforms.Compose([transforms.Scale((args.input_shape,args.input_shape)),
+                                transforms.ToTensor(),
+                                transforms.Normalize(mu, sd)])
+
+    train_predictions = []
+    train_targets = []
+    test_predictions = []
+    test_targets = []
+
+    if args.verbose:
+        print('Loading dataset:', args.dataset_dir)
+    trainset = DATASET(parent=args.dataset_dir, train=True, transform=transf)
+    testset = DATASET(parent=args.dataset_dir, train=False, transform=transf)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=False, num_workers=1)
+    testloader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=False, num_workers=1)  
+
+    model_name = os.path.join(args.model_dir, 'model.pth')
+    if args.verbose:
+        print('Loading model:', model_name)
+    model = torch.load(model_name)
+    model.eval()
+
+    if args.use_cuda:
+        model.cuda(args.gpu_id)
+
+    # Testing -------------------------
+
+    try:
+        if args.verbose:
+            print('Testing...')
+        train_predictions, train_targets, _, _ = test(model, trainloader, use_cuda=args.use_cuda, gpu_id=args.gpu_id)
+        test_predictions, test_targets, _, _ = test(model, testloader, use_cuda=args.use_cuda, gpu_id=args.gpu_id)
+    except Exception as e:
+        #print(e.with_traceback, e.args)
+        raise e
+
+    #%% Compute final scores ---------------------------------------------------
+
+    print('#' * 60)
+
+    train_mae = accuracy(train_predictions, train_targets)
+    print('Train Accuracy:', train_mae)
+
+    test_mae = accuracy(test_predictions, test_targets)
+    print('Test Accuracy:', test_mae)

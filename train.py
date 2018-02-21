@@ -15,7 +15,7 @@ import sys
 import os
 
 from utils import *
-from metrics import accuracy
+from metrics import *
 from dataset import DATASET
 
 from test import test
