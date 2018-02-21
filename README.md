@@ -9,10 +9,10 @@ python3 generate_bin_data.py
 ```
 
 ### Train and Test custom model
-Run the `train.py` script from the root folder to train the model and `test.py` to test it
+Run the `train.sh` script from the root folder to train the model and `test.py` to test it. Run `python3 test.py -h` for a full list of testing parameters.
 ```python
-python3 train.py
-python3 test.py
+./run_train.sh
+python3 test.py --model_dir <path_to_model> --dataset_dir data/bin_data --use_gpu --verbose
 ```
 
 ### Test a VGG16 classifier
