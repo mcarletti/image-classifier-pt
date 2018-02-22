@@ -142,7 +142,7 @@ if __name__ == '__main__':
     sd = (0.229, 0.224, 0.225)
 
     # Normalize RGB-8 images between -1 and +1.
-    transf = transforms.Compose([transforms.Scale((args.input_shape,args.input_shape)),
+    transf = transforms.Compose([transforms.Resize((args.input_shape,args.input_shape)),
                                 transforms.ToTensor(),
                                 transforms.Normalize(mu, sd)])
 

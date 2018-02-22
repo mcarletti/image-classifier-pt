@@ -38,7 +38,7 @@ if HAS_CUDA:
     image = image.cuda()
 
 print('Computing prediction')
-pred = torch.nn.Softmax()(model(image))
+pred = torch.nn.Softmax(dim=1)(model(image))
 pred = pred.data.cpu().numpy()[0]
 
 # show results
