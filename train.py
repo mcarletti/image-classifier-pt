@@ -190,6 +190,12 @@ if __name__ == '__main__':
         model.fc = torch.nn.Linear(nfts, nb_classes)
         normal_init(model.fc)
         classifier = model.fc
+        # googlenet also returns an auxiliary prediction
+        # that we disable by setting to false its usage
+        # in the forward pass
+        if args.model == 'googlenet':
+            model.aux_logits = False
+            model.AuxLogits = None
     else:
         raise Exception('Unknown model name:', args.model)
 
