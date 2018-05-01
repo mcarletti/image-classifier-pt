@@ -71,7 +71,7 @@ def test(model, dataloader, loss_fun=None, score_fun=None, use_cuda=False, gpu_i
         if use_cuda:
             t = t.cuda()
         loss = loss_fun(p, t)
-        loss = torch_to_numpy(loss)[0]
+        loss = torch_to_numpy(loss)
 
     if score_fun is not None:
         score = score_fun(predictions, targets)
