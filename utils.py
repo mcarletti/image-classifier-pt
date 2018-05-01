@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import torch
-from torch.autograd import Variable
 
 import scipy.io as sio
 import numpy as np
@@ -10,14 +9,12 @@ import numpy as np
 
 def numpy_to_torch(array, use_cuda=False):
     tensor = torch.from_numpy(array)
-    tensor = Variable(tensor)
+    tensor.requires_grad = True
     if use_cuda:
         tensor = tensor.cuda()
     return tensor
 
 def torch_to_numpy(tensor):
-    if not isinstance(tensor, Variable):
-        tensor = Variable(tensor)
     array = tensor.cpu().data.numpy()
     return array
 

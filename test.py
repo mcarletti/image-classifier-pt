@@ -3,7 +3,6 @@
 import argparse
 
 import torch
-from torch.autograd import Variable
 import torchvision.transforms as transforms
 
 import matplotlib.pyplot as plt
@@ -24,7 +23,7 @@ def test_image(model, image, use_cuda=False, gpu_id=0):
     if use_cuda:
         image = image.cuda(gpu_id)
 
-    pred = model(Variable(image.unsqueeze(0)))
+    pred = model(image.unsqueeze(0))
     pred = torch_to_numpy(pred).squeeze()
 
     return pred
@@ -52,7 +51,7 @@ def test(model, dataloader, loss_fun=None, score_fun=None, use_cuda=False, gpu_i
         if use_cuda:
             image = image.cuda(gpu_id)
 
-        pred = model(Variable(image))
+        pred = model(image)
         pred = np.mean(torch_to_numpy(pred), axis=0).squeeze()
         
         predictions.append(pred)

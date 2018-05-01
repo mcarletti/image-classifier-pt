@@ -3,7 +3,6 @@
 import argparse
 
 import torch
-from torch.autograd import Variable
 from torchvision.models import alexnet, inception_v3, vgg16, resnet50
 import torchvision.transforms as transforms
 
@@ -58,7 +57,6 @@ def train(model, dataloader, optimizer, loss_fun, score_fun, verbose=False):
         # prepare inputs
         if isinstance(targets, torch.IntTensor): # needed for classification
             targets = targets.type(torch.LongTensor)
-        inputs, targets = Variable(inputs), Variable(targets)
         if args.use_cuda:
             inputs, targets = inputs.cuda(args.gpu_id), targets.cuda(args.gpu_id)
 
